@@ -32,6 +32,10 @@ http_server* http_server_create(int port) {
 
 
 void http_server_start(http_server* hs) {
+    int reuse = 1;
+    if (setsockopt(hs->server_socket, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
+        perror("setsockopt(SO_REUSEADDR) failed");
+    }
 
     int bind_socket_status = bind(
         hs->server_socket,
@@ -45,6 +49,7 @@ void http_server_start(http_server* hs) {
 
 
     listen(hs->server_socket, 5);
+    printf("Server started on port %d\n", ntohs(hs->server_address.sin_port));
 }
 
 int http_server_get_server_socket(http_server* ht) {
@@ -57,5 +62,6 @@ struct sockaddr_in http_server_get_server_address(http_server* ht) {
 
 
 void http_server_destroy(http_server* ht) {
+    close(ht->server_socket);
     free(ht);
 }

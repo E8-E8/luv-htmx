@@ -6,14 +6,14 @@
 #include <sys/socket.h>
 #include <stdbool.h>
 
-char* get_http_request(int client_socket)
+char* get_http_request_test(int client_socket)
 {
   char* buffer = (char *)malloc(1024);
   recv(client_socket, buffer, 1024, 0);
   return buffer;
 }
 
-int main() {
+int test() {
     // Create a socket
     int server_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (server_socket == -1) {
@@ -49,7 +49,7 @@ int main() {
             continue;
         }
 
-        char* buffer = get_http_request(client_socket);
+        char* buffer = get_http_request_test(client_socket);
 
         printf("Received: %s\n", buffer);
         size_t http_header_length = strlen("HTTP/1.1 200 OK\r\n\n");
@@ -65,7 +65,6 @@ int main() {
         close(client_socket);
     }
 
-    // Close the server socket
     close(server_socket);
 
     return 0;
