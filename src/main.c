@@ -111,6 +111,24 @@ char* get_http_request(int client_socket)
   return buffer;
 }
 
+char* get_http_request_static(int client_socket) {
+  char* buffer = (char*)malloc(2048);
+  if (buffer == NULL) {
+    perror("malloc");
+    return NULL; // Return NULL to indicate a memory allocation error.
+  }
+
+  int chunk_size = 64;
+  int total_received = 0;
+  int expected_length = 2048; // Adjust as needed
+  int end_of_request = 0;
+  char* crlf = "\r\n\r\n"; // Detect the end of the HTTP request.
+
+  recv(client_socket, buffer, 1024, 0);
+
+  return buffer;
+}
+
 void handle_file_request(char* path_to_request_file, int client_socket) {
   char* file_content = read_file(path_to_request_file);
   char* http_response = build_response("HTTP/1.1 200 OK\r\n\n", file_content);
@@ -140,6 +158,7 @@ void handle_route_request(char* request_path, int client_socket) {
 
     send(client_socket, http_response, strlen(http_response), 0);
     close(client_socket);
+    return;
   }
 
   char* http_response = build_response("HTTP/1.1 200 OK\r\n\n", "<h1>404 - needs implementation</h1>");
@@ -166,11 +185,11 @@ int main() {
       continue;
     }
 
-
-    char* buffer = get_http_request(client_socket);
+    char* buffer = get_http_request_static(client_socket);
     printf("\nFull http request: %s", buffer);
 
     http_request* request = http_request_parse(buffer, strlen(buffer));
+    hash_table_print(http_request_get_headers(request));
 
     char path_to_request_file[261] = "./pub";
     strcat(path_to_request_file, http_request_get_path(request));
@@ -183,6 +202,8 @@ int main() {
       handle_route_request(http_request_get_path(request), client_socket);
     }
 
+    free(buffer);
+    http_request_destroy(request);
   }
 
   http_server_destroy(hs);
