@@ -1,6 +1,3 @@
-# c-deez-http
-A complete http web server written in C.
-
 ## Compiling and Running
 
 Follow these steps to compile and run the program:
