@@ -1,6 +1,6 @@
 # c-deez-http
 A complete http web server written in C.
-All the networking is managed using row sockets like a **TRUE SIGMA**
+All the networking is managed using raw sockets like a **TRUE SIGMA**
 
 
 ## Compiling and Running
