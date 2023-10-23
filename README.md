@@ -1,4 +1,4 @@
-# c-deez-http
+# fullstack-c
 A complete http web server written in C.
 All the networking is managed using raw sockets like a **TRUE SIGMA**
 
