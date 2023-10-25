@@ -15,14 +15,52 @@ typedef struct _http_request {
   char body[1024];
 } http_request;
 
-unsigned long http_request_hash_header(const char* data, size_t len) {
-    unsigned long i = 0;
+uint64_t http_request_hash_header(const char* data, size_t len) {
+  uint64_t hash = 14695981039346656037ULL;
+  size_t i;
 
-    for (int j = 0; data[j]; j++) {
-        i += data[j];
+  for (i = 0; i < len; i++) {
+    hash ^= (uint64_t)data[i];
+    hash *= 1099511628211ULL;
+  }
+
+  return hash;
+}
+
+void printStringWithSpecialCharacters(const char *str) {
+    for (int i = 0; str[i] != '\0'; i++) {
+        char currentChar = str[i];
+        switch (currentChar) {
+            case '\n':
+                printf("\\n");
+                break;
+            case '\r':
+                printf("\\r");
+                break;
+            case '\t':
+                printf("\\t");
+                break;
+            case '\f':
+                printf("\\f");
+                break;
+            case '\v':
+                printf("\\v");
+                break;
+            case '\a':
+                printf("\\a");
+                break;
+            case '\\':
+                printf("\\\\");
+                break;
+            case '\0':
+                printf("\\0");
+                break;
+            default:
+                putchar(currentChar);
+                break;
+        }
     }
-
-    return i;
+    printf("\n");
 }
 
 hash_table* http_parse_headers(char* original_request) {
@@ -42,14 +80,23 @@ hash_table* http_parse_headers(char* original_request) {
       *value = '\0';
       value += 2;
 
+      if(strcmp(key, "Content-Length") == 0) {
+        printf("The content length key is: %s\n", key);
+        printf("The content length is: %s\n", value);
+      }
+
       hash_table_insert(headers, key, value);
     }
 
     line = strtok(NULL, "\r\n");
   }
 
+  // printf("The length: %s", (char*)hash_table_lookup(headers, "Content-Length"));
+
   return headers;
 }
+
+
 
 http_request* http_request_parse(char *request, size_t request_size) {
   http_request* http_request = malloc(sizeof(*http_request));

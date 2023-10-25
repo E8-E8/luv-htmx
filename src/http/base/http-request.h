@@ -13,6 +13,6 @@ char* http_request_get_path(http_request *request);
 hash_table* http_request_get_headers(http_request *request);
 void* http_request_get_header(http_request* request, const char* key);
 char* http_request_get_version(http_request *request);
-
+hash_table* http_parse_headers(char* request);
 
 #endif

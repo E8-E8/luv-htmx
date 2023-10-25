@@ -41,7 +41,7 @@ void hash_table_print(hash_table* ht) {
   printf("=== Start table ===\n");
   for (uint32_t i = 0; i < ht->size; i++) {
     if (ht->elements[i] == NULL) {
-      //printf("\t%i\t---\n", i);
+      printf("\t%i\t---\n", i);
     } else {
       entry *tmp = ht->elements[i];
       while (tmp != NULL) {
@@ -77,9 +77,10 @@ bool hash_table_insert(hash_table* ht, const char* key, void* obj){
 
 void* hash_table_lookup(hash_table* ht, const char* key){
   if (key == NULL || ht == NULL) return false;
+
   size_t index = hash_table_index(ht, key);
 
-  entry *tmp = ht->elements[index];
+  entry* tmp = ht->elements[index];
 
   while(tmp != NULL && strcmp(tmp->key, key) != 0) {
     tmp = tmp->next;
