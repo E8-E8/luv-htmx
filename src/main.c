@@ -68,74 +68,6 @@ char* read_file(const char* file_name) {
   return file_content;
 }
 
-char* get_http_request_static(int client_socket) {
-  char* buffer = (char*)malloc(2048);
-  if (buffer == NULL) {
-    perror("malloc");
-    return NULL; // Return NULL to indicate a memory allocation error.
-  }
-
-  int chunk_size = 64;
-  int total_received = 0;
-  int expected_length = 2048; // Adjust as needed
-  int end_of_request = 0;
-  char* crlf = "\r\n\r\n"; // Detect the end of the HTTP request.
-
-  recv(client_socket, buffer, 1024, 0);
-
-  return buffer;
-}
-
-char* get_http_headers(int client_socket) {
-  int buffer_size = 2048;
-  char* buffer = (char*)malloc(buffer_size);
-
-  if (buffer == NULL) {
-    perror("Memory allocation error");
-    return NULL;
-  }
-
-  int chunk_size = 32;
-  int total_received = 0;
-  char chunk[32];
-
-  while (true) {
-    int bytes_received = recv(client_socket, chunk, chunk_size, 0);
-    total_received += bytes_received;
-
-    char* is_header_end = strstr(buffer, "\r\n\r\n");
-
-    if (bytes_received < chunk_size) {
-      memset(chunk + bytes_received, 0, chunk_size - bytes_received);
-    }
-
-    printf("Got chunk with data: \n*****\n\n %s \n\n*****", chunk);
-
-    if (is_header_end) {
-      strcat(buffer, chunk);
-      break;
-    } else {
-      strcat(buffer, chunk);
-    }
-  }
-
-  printf("The buffer is: \n*****\n\n %s \n\n*****", buffer);
-
-  return buffer;
-}
-
-char* get_http_request(int client_socket)
-{
-  char* headers_str = get_http_headers(client_socket);
-  hash_table* headers = http_parse_headers(headers_str);
-
-  char* content_length = (char *)hash_table_lookup(headers, "Content-Length");
-  printf("The content length is: %s\n", content_length);
-
-  hash_table_destroy(headers);
-
-  return headers_str;
-}
 
 void handle_file_request(char* path_to_request_file, int client_socket) {
   char* file_content = read_file(path_to_request_file);
@@ -182,7 +114,6 @@ int main() {
   int client_socket;
   int server_socket = http_server_get_server_socket(hs);
 
-  printf("Server running on port: %i", PORT);
   while(1) {
     client_socket = accept(server_socket, NULL, NULL);
 
@@ -191,7 +122,7 @@ int main() {
       continue;
     }
 
-    char* buffer = get_http_request(client_socket);
+    char* buffer = http_request_get_from_client(client_socket);
 
     free(buffer);
     //http_request* request = http_request_parse(buffer, strlen(buffer));

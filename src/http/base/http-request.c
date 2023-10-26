@@ -2,6 +2,7 @@
 #include "../../data_types/hash-table.h"
 #include <string.h>
 #include <stdio.h>
+#include <sys/socket.h>
 
 #define HTTP_METHOD_MAX_LENGTH 8
 #define HTTP_PATH_MAX_LENGTH 256
@@ -49,6 +50,66 @@ hash_table* http_parse_headers(char* original_request) {
   }
 
   return headers;
+}
+
+char* http_request_get_from_client(int client_socket) {
+  int buffer_size = 8192;
+  char* buffer = (char*)malloc(buffer_size);
+
+  if (buffer == NULL) {
+    perror("Memory allocation error");
+    return NULL;
+  }
+
+  int chunk_size = 128;
+  char* header_chunk = (char*)malloc(chunk_size);
+  int total_received = 0;
+
+  // receive the headers
+  while (true) {
+    int bytes_received = recv(client_socket, header_chunk, chunk_size, 0);
+    total_received += bytes_received;
+
+    char* is_header_end = strstr(buffer, "\r\n\r\n");
+
+    if (bytes_received < chunk_size) {
+      memset(header_chunk + bytes_received, 0, chunk_size - bytes_received);
+    }
+
+    if (is_header_end) {
+      strcat(buffer, header_chunk);
+      break;
+    } else {
+      strcat(buffer, header_chunk);
+    }
+  }
+
+  free(header_chunk);
+
+  hash_table* headers = http_parse_headers(buffer);
+  char* headers_end = strstr(buffer, "\r\n\r\n");
+  int body_length = atoi((char *)hash_table_lookup(headers, "Content-Length"));
+  int body_to_receive = body_length - (strlen(headers_end) - 4);
+
+  char* body_chunk = (char*)malloc(chunk_size);
+
+  // receive the body
+  while (body_to_receive > 0) {
+    int bytes_received = recv(client_socket, body_chunk, chunk_size, 0);
+    total_received += bytes_received;
+    body_to_receive -= bytes_received;
+
+    if (bytes_received < chunk_size) {
+      memset(body_chunk + bytes_received, 0, chunk_size - bytes_received);
+    }
+
+    strcat(buffer, body_chunk);
+  }
+
+  free(body_chunk);
+
+  printf("The request is: %s\n", buffer);
+  return buffer;
 }
 
 http_request* http_request_parse(char *request, size_t request_size) {
