@@ -1,6 +1,5 @@
 # fullstack-c
-A complete http web server written in C.
-All the networking is managed using raw sockets like a **TRUE SIGMA**
+A complete http web server written in C using libuv for scalability.
 
 
 ## Compiling and Running
