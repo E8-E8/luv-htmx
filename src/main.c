@@ -1,160 +1,79 @@
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <signal.h>
-
-#include <sys/stat.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-
-#include <netinet/in.h>
 #include <unistd.h>
+#include <string.h>
+#include <stdlib.h>
+#include <uv.h>
 
-#include "http/base/http-server.h"
-#include "http/base/http-request.h"
-#include "data_types/hash-table.h"
+uv_loop_t *loop;
+struct sockaddr_in addr;
 
-http_server* hs;
-
-char* build_response(const char* http_header, const char* http_body) {
-  size_t http_header_length = strlen(http_header);
-  size_t http_body_length = strlen(http_body);
-
-  char* http_response = (char*)malloc(http_header_length + http_body_length);
-
-  if (http_response == NULL) {
-    perror("Memory allocation error");
-    return NULL;
-  }
-
-  strcpy(http_response, http_header);
-  strcat(http_response, http_body);
-
-  return http_response;
+void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
+  buf->base = (char*)malloc(suggested_size);
+  buf->len = suggested_size;
 }
 
-char* read_file(const char* file_name) {
-  FILE* file;
-  file = fopen(file_name, "rb");
-  if (file == NULL) {
-    perror("Error opening file");
-    return NULL;
+void echo_write(uv_write_t *req, int status) {
+  if (status) {
+    fprintf(stderr, "Write error %s\n", uv_strerror(status));
   }
-
-  // Get file size
-  fseek(file, 0, SEEK_END);
-  long file_size = ftell(file);
-  fseek(file, 0, SEEK_SET);
-
-  char* file_content = (char *)malloc(file_size + 1);
-  if (file_content == NULL) {
-    perror("Memory allocation error");
-    fclose(file);
-    return NULL;
-  }
-
-  size_t bytes_read = fread(file_content, 1, file_size, file);
-
-  if (bytes_read != file_size) {
-    perror("File read error");
-    free(file_content);
-    fclose(file);
-    return NULL;
-  }
-
-  file_content[file_size] = '\0';
-  fclose(file);
-
-  return file_content;
+  free(req);
 }
 
-
-void handle_file_request(char* path_to_request_file, int client_socket) {
-  char* file_content = read_file(path_to_request_file);
-  char* http_response = build_response("HTTP/1.1 200 OK\r\n\n", file_content);
-  send(client_socket, http_response, strlen(http_response), 0);
-}
-
-void handle_route_request(char* request_path, int client_socket) {
-  printf("%s", request_path);
-
-  if (strcmp("/", request_path) == 0) {
-    size_t http_header_length = strlen("HTTP/1.1 200 OK\r\n\n");
-    char* http_header = (char *)malloc(http_header_length + 1); // Add 1 for the null terminator
-
-    if (http_header == NULL) {
-      perror("Memory allocation error");
-      return;
+void echo_read(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf) {
+  if (nread < 0) {
+    if (nread != UV_EOF) {
+      fprintf(stderr, "Read error %s\n", uv_err_name(nread));
+      uv_close((uv_handle_t*) client, NULL);
     }
+  } else if (nread > 0) {
+    printf("The message is %s\n", buf->base);
+    printf("What is nread? %i\n", nread);
+    uv_write_t *req = (uv_write_t *) malloc(sizeof(uv_write_t));
 
-    strcpy(http_header, "HTTP/1.1 200 OK\r\n\n");
+    const char *http_response = "HTTP/1.1 200 OK\r\n"
+                              "Content-Length: 13\r\n"
+                              "Content-Type: text/plain\r\n\r\n"
+                              "Hello, World!";
 
-    char* index_html = read_file("./pub/index.html");
-    char* http_response = build_response(http_header, index_html);
+    uv_buf_t wrbuf = uv_buf_init(http_response, strlen(http_response));
+    uv_write(req, client, &wrbuf, 1, echo_write);
 
-    free(http_header);
-    free(index_html);
+    uv_close((uv_handle_t*) client, NULL);
+  }
 
-    send(client_socket, http_response, strlen(http_response), 0);
-    close(client_socket);
+  if (buf->base) {
+    free(buf->base);
+  }
+}
+
+void on_new_connection(uv_stream_t *server, int status) {
+  if (status < 0) {
+    fprintf(stderr, "New connection error %s\n", uv_strerror(status));
     return;
   }
 
-  char* http_response = build_response("HTTP/1.1 200 OK\r\n\n", "<h1>404 - needs implementation</h1>");
-  send(client_socket, http_response, strlen(http_response), 0);
-  close(client_socket);
+  uv_tcp_t *client = (uv_tcp_t*)malloc(sizeof(uv_tcp_t));
+  uv_tcp_init(loop, client);
+  if (uv_accept(server, (uv_stream_t*) client) == 0) {
+    uv_read_start((uv_stream_t*)client, alloc_buffer, echo_read);
+  } else {
+    uv_close((uv_handle_t*) client, NULL);
+  }
 }
 
 int main() {
-  const int PORT = 9002;
+  loop = uv_default_loop();
 
-  hs = http_server_create(PORT);
-  http_server_start(hs);
+  uv_tcp_t server;
+  uv_tcp_init(loop, &server);
 
-  int client_socket;
-  int server_socket = http_server_get_server_socket(hs);
+  uv_ip4_addr("0.0.0.0", 7000, &addr);
 
-  while(1) {
-    client_socket = accept(server_socket, NULL, NULL);
-
-    if (client_socket == -1) {
-      perror("Error accepting connection");
-      continue;
-    }
-
-    char* buffer = http_request_get_from_client(client_socket);
-
-    printf("The buffer is %s\n", buffer);
-
-    free(buffer);
-    //http_request* request = http_request_parse(buffer, strlen(buffer));
-
-    //printf("The content-length is %s\n", (char *)hash_table_lookup(http_request_get_headers(request), "Content-Length"));
-
-    //char path_to_request_file[261] = "./pub";
-    //strcat(path_to_request_file, http_request_get_path(request));
-
-    //struct stat file_stat;
-    //if (stat(path_to_request_file, &file_stat) == 0 && S_ISREG(file_stat.st_mode)) {
-
-    handle_file_request("./pub/index.html", client_socket);
-
-    //  continue;
-    //} else {
-    //  handle_route_request(http_request_get_path(request), client_socket);
-    //}
-
-    // http_request_destroy(request);
-    close(client_socket);
+  uv_tcp_bind(&server, (const struct sockaddr*)&addr, 0);
+  int r = uv_listen((uv_stream_t*)&server, 128, on_new_connection);
+  if (r) {
+    fprintf(stderr, "Listen error %s\n", uv_strerror(r));
+    return 1;
   }
-
-  http_server_destroy(hs);
-  return 0;
+  return uv_run(loop, UV_RUN_DEFAULT);
 }
-
-
-
-
-
-
-
