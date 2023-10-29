@@ -124,6 +124,8 @@ int main() {
 
     char* buffer = http_request_get_from_client(client_socket);
 
+    printf("The buffer is %s\n", buffer);
+
     free(buffer);
     //http_request* request = http_request_parse(buffer, strlen(buffer));
 
@@ -134,7 +136,9 @@ int main() {
 
     //struct stat file_stat;
     //if (stat(path_to_request_file, &file_stat) == 0 && S_ISREG(file_stat.st_mode)) {
+
     handle_file_request("./pub/index.html", client_socket);
+
     //  continue;
     //} else {
     //  handle_route_request(http_request_get_path(request), client_socket);

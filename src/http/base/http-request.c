@@ -61,41 +61,47 @@ char* http_request_get_from_client(int client_socket) {
     return NULL;
   }
 
-  int chunk_size = 128;
+  int chunk_size = 64;
   char* header_chunk = (char*)malloc(chunk_size);
   int total_received = 0;
+  char* headers_end = NULL;
 
   // receive the headers
   while (true) {
     int bytes_received = recv(client_socket, header_chunk, chunk_size, 0);
     total_received += bytes_received;
 
-    char* is_header_end = strstr(buffer, "\r\n\r\n");
-
     if (bytes_received < chunk_size) {
       memset(header_chunk + bytes_received, 0, chunk_size - bytes_received);
     }
 
-    if (is_header_end) {
-      strcat(buffer, header_chunk);
+    strcat(buffer, header_chunk);
+
+    headers_end = strstr(buffer, "\r\n\r\n");
+
+    if (headers_end != NULL || bytes_received == 0) {
+      free(header_chunk);
       break;
-    } else {
-      strcat(buffer, header_chunk);
     }
   }
 
-  free(header_chunk);
-
   hash_table* headers = http_parse_headers(buffer);
-  char* headers_end = strstr(buffer, "\r\n\r\n");
-  int body_length = atoi((char *)hash_table_lookup(headers, "Content-Length"));
-  int body_to_receive = body_length - (strlen(headers_end) - 4);
+  char* body_length_raw = (char *)hash_table_lookup(headers, "Content-Length");
 
+  if (body_length_raw == NULL) {
+    return buffer;
+  }
+
+  int body_length = atoi(body_length_raw);
+
+  int body_to_receive = body_length - (strlen(headers_end) - 4);
   char* body_chunk = (char*)malloc(chunk_size);
 
   // receive the body
   while (body_to_receive > 0) {
-    int bytes_received = recv(client_socket, body_chunk, chunk_size, 0);
+    int bytes_to_receive = body_to_receive > chunk_size ? chunk_size : body_to_receive;
+
+    int bytes_received = recv(client_socket, body_chunk, bytes_to_receive, 0);
     total_received += bytes_received;
     body_to_receive -= bytes_received;
 
@@ -107,8 +113,8 @@ char* http_request_get_from_client(int client_socket) {
   }
 
   free(body_chunk);
+  free(headers);
 
-  printf("The request is: %s\n", buffer);
   return buffer;
 }
 
