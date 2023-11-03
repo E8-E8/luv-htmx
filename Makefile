@@ -21,7 +21,8 @@ clean:
 
 # Watch for changes and rebuild
 watch:
-	while true; do \
-		inotifywait -e close_write -r $(SRC_DIR); \
-		$(MAKE) all; \
+	make run
+	while inotifywait -r -e modify,create,delete ./src; do \
+		./watch_scripts/recompile.sh & \
+		./watch_scripts/rerun.sh & \
 	done

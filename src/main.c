@@ -16,6 +16,7 @@ void echo_write(uv_write_t *req, int status) {
   if (status) {
     fprintf(stderr, "Write error %s\n", uv_strerror(status));
   }
+
   free(req);
 }
 
@@ -26,18 +27,14 @@ void echo_read(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf) {
       uv_close((uv_handle_t*) client, NULL);
     }
   } else if (nread > 0) {
-    printf("The message is %s\n", buf->base);
-    printf("What is nread? %i\n", nread);
     uv_write_t *req = (uv_write_t *) malloc(sizeof(uv_write_t));
 
-    const char *http_response = "HTTP/1.1 200 OK\r\n"
-                              "Content-Length: 13\r\n"
-                              "Content-Type: text/plain\r\n\r\n"
-                              "Hello, World!";
+    char *http_response = "HTTP/1.1 200 OK\r\n"
+                              "Content-Type: text/html\r\n\r\n"
+                              "<h4>Hello World</h5>";
 
     uv_buf_t wrbuf = uv_buf_init(http_response, strlen(http_response));
     uv_write(req, client, &wrbuf, 1, echo_write);
-
     uv_close((uv_handle_t*) client, NULL);
   }
 
@@ -51,7 +48,6 @@ void on_new_connection(uv_stream_t *server, int status) {
     fprintf(stderr, "New connection error %s\n", uv_strerror(status));
     return;
   }
-
   uv_tcp_t *client = (uv_tcp_t*)malloc(sizeof(uv_tcp_t));
   uv_tcp_init(loop, client);
   if (uv_accept(server, (uv_stream_t*) client) == 0) {
@@ -60,6 +56,7 @@ void on_new_connection(uv_stream_t *server, int status) {
     uv_close((uv_handle_t*) client, NULL);
   }
 }
+
 
 int main() {
   loop = uv_default_loop();
@@ -70,7 +67,7 @@ int main() {
   uv_ip4_addr("0.0.0.0", 7000, &addr);
 
   uv_tcp_bind(&server, (const struct sockaddr*)&addr, 0);
-  int r = uv_listen((uv_stream_t*)&server, 128, on_new_connection);
+  int r = uv_listen((uv_stream_t*)&server, 1024, on_new_connection);
   if (r) {
     fprintf(stderr, "Listen error %s\n", uv_strerror(r));
     return 1;
