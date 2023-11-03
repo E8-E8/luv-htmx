@@ -1,6 +1,12 @@
 # LUV HTMX
 A complete http web server written in C using libuv and htmx for frontend.
 
+To run the project you need to install gcc and if you want to use the make watch
+tmux.
+```
+sudo apt install tmux
+sudo apt install gcc
+```
 
 ## Compiling and Running
 
