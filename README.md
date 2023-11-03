@@ -1,5 +1,5 @@
-# fullstack-c
-A complete http web server written in C using libuv for scalability.
+# LUV HTMX
+A complete http web server written in C using libuv and htmx for frontend.
 
 
 ## Compiling and Running
