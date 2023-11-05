@@ -69,7 +69,6 @@ http_request* http_request_parse(char *request, size_t request_size) {
   if (body != NULL) {
     http_request->body = malloc(strlen(body) + 1);
     strcpy(http_request->body, body);
-    printf("The request body is: %s\n", body);
   }
 
   if (strlen(method) <= 8) {
