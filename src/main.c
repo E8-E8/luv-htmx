@@ -3,6 +3,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <uv.h>
+#include "data_types/hash-table.h"
+#include "http/base/http-request.h"
 
 uv_loop_t *loop;
 struct sockaddr_in addr;
@@ -28,10 +30,17 @@ void echo_read(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf) {
     }
   } else if (nread > 0) {
     uv_write_t *req = (uv_write_t *) malloc(sizeof(uv_write_t));
+    printf("This is the request: \n\n%s\n\n", buf->base);
+
+    char* bufferCopy = malloc(strlen(buf->base) + 1);
+    strcpy(bufferCopy, buf->base);
+
+    http_request* request = http_request_parse(bufferCopy, strlen(bufferCopy));
+    http_request_destroy(request);
 
     char *http_response = "HTTP/1.1 200 OK\r\n"
                               "Content-Type: text/html\r\n\r\n"
-                              "<h4>Hello World</h5>";
+                              "<h4>Hello World</h4>";
 
     uv_buf_t wrbuf = uv_buf_init(http_response, strlen(http_response));
     uv_write(req, client, &wrbuf, 1, echo_write);

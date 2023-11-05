@@ -7,7 +7,7 @@ LIBS := -luv
 
 SRC_FILES := $(shell find $(SRC_DIR) -name "*.c")
 
-CFLAGS := -Wall -g
+CFLAGS := -Wall -Wextra -pedantic -g
 
 EXECUTABLE := run
 
@@ -21,7 +21,7 @@ clean:
 
 # Watch for changes and rebuild
 watch:
-	make run
+	tmux send-keys -t c-run "./run" C-m
 	while inotifywait -r -e modify,create,delete ./src; do \
 		./watch_scripts/recompile.sh & \
 		./watch_scripts/rerun.sh & \

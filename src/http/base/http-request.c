@@ -13,7 +13,7 @@ typedef struct _http_request {
   char method[HTTP_METHOD_MAX_LENGTH];
   hash_table* headers;
   char version[HTTP_VERSION_MAX_LENGTH];
-  char body[1024];
+  char* body;
 } http_request;
 
 unsigned long http_request_hash_header(const char* data, size_t len) {
@@ -52,81 +52,25 @@ hash_table* http_parse_headers(char* original_request) {
   return headers;
 }
 
-char* http_request_get_from_client(int client_socket) {
-  int buffer_size = 8192;
-  char* buffer = (char*)malloc(buffer_size);
-
-  if (buffer == NULL) {
-    perror("Memory allocation error");
-    return NULL;
-  }
-
-  int chunk_size = 64;
-  char* header_chunk = (char*)malloc(chunk_size);
-  int total_received = 0;
-  char* headers_end = NULL;
-
-  // receive the headers
-  while (true) {
-    int bytes_received = recv(client_socket, header_chunk, chunk_size, 0);
-    total_received += bytes_received;
-
-    if (bytes_received < chunk_size) {
-      memset(header_chunk + bytes_received, 0, chunk_size - bytes_received);
-    }
-
-    strcat(buffer, header_chunk);
-
-    headers_end = strstr(buffer, "\r\n\r\n");
-
-    if (headers_end != NULL || bytes_received == 0) {
-      free(header_chunk);
-      break;
-    }
-  }
-
-  hash_table* headers = http_parse_headers(buffer);
-  char* body_length_raw = (char *)hash_table_lookup(headers, "Content-Length");
-
-  if (body_length_raw == NULL) {
-    return buffer;
-  }
-
-  int body_length = atoi(body_length_raw);
-
-  int body_to_receive = body_length - (strlen(headers_end) - 4);
-  char* body_chunk = (char*)malloc(chunk_size);
-
-  // receive the body
-  while (body_to_receive > 0) {
-    int bytes_to_receive = body_to_receive > chunk_size ? chunk_size : body_to_receive;
-
-    int bytes_received = recv(client_socket, body_chunk, bytes_to_receive, 0);
-    total_received += bytes_received;
-    body_to_receive -= bytes_received;
-
-    if (bytes_received < chunk_size) {
-      memset(body_chunk + bytes_received, 0, chunk_size - bytes_received);
-    }
-
-    strcat(buffer, body_chunk);
-  }
-
-  free(body_chunk);
-  free(headers);
-
-  return buffer;
-}
-
 http_request* http_request_parse(char *request, size_t request_size) {
   http_request* http_request = malloc(sizeof(*http_request));
   hash_table* headers = http_parse_headers(request);
 
   http_request->headers = headers;
+
+  char* body = strstr(request, "\r\n\r\n");
+  body += 4;
+
   char* line = strtok(request, "\n");
   char* method = strtok(line, " ");
   char* path = strtok(NULL, " ");
   char* version = strtok(NULL, " ");
+
+  if (body != NULL) {
+    http_request->body = malloc(strlen(body) + 1);
+    strcpy(http_request->body, body);
+    printf("The request body is: %s\n", body);
+  }
 
   if (strlen(method) <= 8) {
     strcpy(http_request->method, method);
@@ -139,6 +83,7 @@ http_request* http_request_parse(char *request, size_t request_size) {
   if (strlen(method) <= 8) {
     strcpy(http_request->version, version);
   }
+
 
   return http_request;
 }
