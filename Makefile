@@ -21,6 +21,7 @@ clean:
 
 # Watch for changes and rebuild
 watch:
+	./watch_scripts/tmux_start.sh &
 	tmux send-keys -t c-run "./run" C-m
 	while inotifywait -r -e modify,create,delete ./src; do \
 		./watch_scripts/recompile.sh & \

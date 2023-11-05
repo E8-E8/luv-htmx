@@ -5,6 +5,7 @@
 #include <uv.h>
 #include "data_types/hash-table.h"
 #include "http/base/http-request.h"
+#include "env.h"
 
 uv_loop_t *loop;
 struct sockaddr_in addr;
@@ -70,6 +71,7 @@ void echo_read(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf) {
     strcpy(bufferCopy, buf->base);
 
     http_request* request = http_request_parse(bufferCopy, strlen(bufferCopy));
+    printf("The request path is: %s\n", http_request_get_path(request));
     http_request_destroy(request);
 
     char* http_headers = "HTTP/1.1 200 OK\r\n"
@@ -112,7 +114,7 @@ int main() {
   uv_tcp_t server;
   uv_tcp_init(loop, &server);
 
-  uv_ip4_addr("0.0.0.0", 7000, &addr);
+  uv_ip4_addr(IP, PORT, &addr);
 
   uv_tcp_bind(&server, (const struct sockaddr*)&addr, 0);
   int r = uv_listen((uv_stream_t*)&server, 1024, on_new_connection);
