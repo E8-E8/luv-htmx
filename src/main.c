@@ -5,12 +5,13 @@
 #include <uv.h>
 #include "data_types/hash-table.h"
 #include "http/base/http-request.h"
+#include "http/router/router.h"
 #include "env.h"
 
 uv_loop_t *loop;
 struct sockaddr_in addr;
 
-void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
+void alloc_buffer(uv_handle_t *_, size_t suggested_size, uv_buf_t *buf) {
   buf->base = (char*)malloc(suggested_size);
   buf->len = suggested_size;
 }
@@ -23,7 +24,6 @@ char* read_file(const char* file_name) {
     return NULL;
   }
 
-  // Get file size
   fseek(file, 0, SEEK_END);
   long file_size = ftell(file);
   fseek(file, 0, SEEK_SET);
@@ -37,7 +37,7 @@ char* read_file(const char* file_name) {
 
   size_t bytes_read = fread(file_content, 1, file_size, file);
 
-  if (bytes_read != file_size) {
+  if (bytes_read != (size_t)file_size) {
     perror("File read error");
     free(file_content);
     fclose(file);
@@ -70,8 +70,9 @@ void echo_read(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf) {
     char* bufferCopy = malloc(strlen(buf->base) + 1);
     strcpy(bufferCopy, buf->base);
 
-    http_request* request = http_request_parse(bufferCopy, strlen(bufferCopy));
+    http_request* request = http_request_parse(bufferCopy);
     printf("The request path is: %s\n", http_request_get_path(request));
+
     http_request_destroy(request);
 
     char* http_headers = "HTTP/1.1 200 OK\r\n"
@@ -107,9 +108,17 @@ void on_new_connection(uv_stream_t *server, int status) {
   }
 }
 
+char* handleRoute() {
+  return "This is a GET return from the / path!";
+}
 
 int main() {
   loop = uv_default_loop();
+
+  router* router = router_create();
+  router_add_route(router, "/", "GET", handleRoute);
+
+
 
   uv_tcp_t server;
   uv_tcp_init(loop, &server);

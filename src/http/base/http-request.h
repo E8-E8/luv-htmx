@@ -5,7 +5,7 @@
 #include "../../data_types/hash-table.h"
 
 typedef struct _http_request http_request;
-http_request* http_request_parse(char *request, size_t request_size);
+http_request* http_request_parse(char *request);
 void http_request_destroy(http_request *request);
 
 char* http_request_get_method(http_request *request);

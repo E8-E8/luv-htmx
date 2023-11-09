@@ -52,7 +52,7 @@ hash_table* http_parse_headers(char* original_request) {
   return headers;
 }
 
-http_request* http_request_parse(char *request, size_t request_size) {
+http_request* http_request_parse(char *request) {
   http_request* http_request = malloc(sizeof(*http_request));
   hash_table* headers = http_parse_headers(request);
 

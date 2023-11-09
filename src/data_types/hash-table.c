@@ -53,8 +53,27 @@ void hash_table_print(hash_table* ht) {
     }
   }
   printf("=== End table ===\n");
-};
+}
 
+
+bool hash_table_insert_handler(hash_table* ht, const char* key, char* (*obj)(void*, char*)) {
+  if (key == NULL || obj == NULL || ht == NULL) return false;
+
+  size_t index = hash_table_index(ht, key);
+
+  if (hash_table_lookup(ht, key) != NULL) return false;
+
+  // create a new entry
+  entry *e = malloc(sizeof(*e));
+  e->object = obj;
+  e->key = malloc(strlen(key)+1);
+  strcpy(e->key, key);
+
+  // insert entry
+  e->next = ht->elements[index];
+  ht->elements[index] = e;
+  return true;
+}
 
 bool hash_table_insert(hash_table* ht, const char* key, void* obj){
   if (key == NULL || obj == NULL || ht == NULL) return false;
@@ -77,11 +96,8 @@ bool hash_table_insert(hash_table* ht, const char* key, void* obj){
 
 void* hash_table_lookup(hash_table* ht, const char* key){
   if (key == NULL || ht == NULL) return false;
-
   size_t index = hash_table_index(ht, key);
-
   entry* tmp = ht->elements[index];
-
   while(tmp != NULL && strcmp(tmp->key, key) != 0) {
     tmp = tmp->next;
   }
